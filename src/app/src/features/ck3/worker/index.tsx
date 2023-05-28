@@ -17,3 +17,4 @@ const worker = createWorker();
 export function getCk3Worker() {
   return check(worker, "ck3 worker should be defined");
 }
+

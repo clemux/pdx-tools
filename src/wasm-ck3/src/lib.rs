@@ -1,5 +1,10 @@
-use ck3save::{models::HeaderOwned, Ck3Error, Ck3File, Encoding, FailedResolveStrategy};
+use ck3save::models::{AliveData, Dynasty, DynastyHouse, LivingCharacter};
+use ck3save::{
+    models::Gamestate, models::HeaderOwned, models::PlayedCharacter, Ck3Error, Ck3File, Encoding,
+    EnvTokens, FailedResolveStrategy,
+};
 use serde::Serialize;
+use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 
 mod tokens;
@@ -12,8 +17,26 @@ pub struct Ck3Metadata {
     is_meltable: bool,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Ck3Gamestate<'a> {
+    version: String,
+    played_character: &'a PlayedCharacter,
+    // living: HashMap<u64, &'a LivingCharacter>,
+    // houses: Vec<&'a DynastyHouse>,
+    // houses: HashMap<u64, DynastyHouse>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Ck3Character {
+    first_name: String,
+    house: u64,
+}
+
 pub struct SaveFileImpl {
     header: HeaderOwned,
+    gamestate: Gamestate,
     encoding: Encoding,
 }
 
@@ -30,6 +53,14 @@ impl SaveFile {
     pub fn metadata(&self) -> JsValue {
         to_json_value(&self.0.metadata())
     }
+
+    pub fn gamestate(&self) -> JsValue {
+        to_json_value(&self.0.gamestate())
+    }
+
+    pub fn get_character(&self, id: u64) -> JsValue {
+        to_json_value(&self.0.get_character(id))
+    }
 }
 
 impl SaveFileImpl {
@@ -37,6 +68,24 @@ impl SaveFileImpl {
         Ck3Metadata {
             version: self.header.meta_data.version.clone(),
             is_meltable: self.is_meltable(),
+        }
+    }
+
+    pub fn gamestate(&self) -> Ck3Gamestate {
+        Ck3Gamestate {
+            version: self.gamestate.meta_data.version.clone(),
+            played_character: &self.gamestate.played_character,
+            // houses: self.gamestate.dynasties.dynasty_house,
+        }
+    }
+
+    pub fn get_character(&self, id: u64) -> Ck3Character {
+        match self.gamestate.living.get(&id) {
+            Some(c) => Ck3Character {
+                first_name: c.first_name.clone().unwrap(),
+                house: c.dynasty_house.unwrap(),
+            },
+            None => panic!(),
         }
     }
 
@@ -50,8 +99,10 @@ fn _parse_save(data: &[u8]) -> Result<SaveFile, Ck3Error> {
     let mut zip_sink = Vec::new();
     let meta = file.parse(&mut zip_sink)?;
     let header = meta.deserializer(tokens::get_tokens()).deserialize()?;
+    let gamestate: Gamestate = meta.deserializer(&EnvTokens).deserialize()?;
     Ok(SaveFile(SaveFileImpl {
         header,
+        gamestate,
         encoding: file.encoding(),
     }))
 }
