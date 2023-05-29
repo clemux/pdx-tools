@@ -6,8 +6,9 @@ use ck3save::{
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
-mod tokens;
 pub use tokens::*;
+
+mod tokens;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -21,9 +22,6 @@ pub struct Ck3Metadata {
 pub struct Ck3Gamestate<'a> {
     version: String,
     played_character: &'a PlayedCharacter,
-    // living: HashMap<u64, &'a LivingCharacter>,
-    // houses: Vec<&'a DynastyHouse>,
-    // houses: HashMap<u64, DynastyHouse>,
 }
 
 #[derive(Debug, Serialize)]
@@ -38,7 +36,7 @@ pub struct Ck3Character {
 #[serde(rename_all = "camelCase")]
 pub struct Ck3House {
     id: u64,
-    name: String,
+    name: Option<String>,
 }
 
 pub struct SaveFileImpl {
@@ -94,23 +92,23 @@ impl SaveFileImpl {
             Some(c) => Ck3Character {
                 first_name: c.first_name.clone().unwrap(),
                 house_id: c.dynasty_house,
-                house_name: match self.get_house(c.dynasty_house.unwrap()) {
-                    Some(h) => Some(h.name),
-                    None => None,
-                },
+                house_name: self
+                    .get_house(c.dynasty_house.unwrap())
+                    .map(|h| h.name.unwrap()),
             },
             None => panic!(), // TODO: don't panic
         }
     }
 
     pub fn get_house(&self, id: u64) -> Option<Ck3House> {
-        match self.gamestate.dynasties.dynasty_house.get(&id) {
-            Some(h) => Some(Ck3House {
-                name: h.name.clone().unwrap(),
+        self.gamestate
+            .dynasties
+            .dynasty_house
+            .get(&id)
+            .map(|h| Ck3House {
+                name: h.name.clone(),
                 id: id,
-            }),
-            None => None,
-        }
+            })
     }
 
     // pub fn get_house(&self, id: u64) -> DynastyHouse {
