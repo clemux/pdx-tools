@@ -1,13 +1,14 @@
-import {useEffect, useReducer, useState} from "react";
+import {useCallback, useEffect, useReducer} from "react";
 import {logMs} from "@/lib/log";
 import {timeit} from "@/lib/timeit";
 import Head from "next/head";
 import {getCk3Worker} from "./worker";
 import {MeltButton} from "@/components/MeltButton";
-import {Character, Ck3SaveData} from "./worker/types";
+import {Ck3SaveData} from "./worker/types";
 import {Alert} from "antd";
 import {captureException} from "@sentry/nextjs";
 import {emitEvent} from "@/lib/plausible";
+import {useCk3Worker} from "@/features/ck3/worker/useCk3Worker";
 
 export type Ck3SaveFile = { save: { file: File } };
 
@@ -108,61 +109,48 @@ function useLoadCk3(input: Ck3SaveFile) {
   return { loading, data, error };
 }
 
-async function loadCk3Character(id: bigint) {
-  const worker = getCk3Worker();
-  return await runTask({
-    fn: () => worker.ck3GetCharacter(id),
-    name: "get character " + id,
-  });
-}
 
-async function loadCk3Characters() {
-  const worker = getCk3Worker();
-  return await runTask({
-    fn: () => worker.ck3GetCharacters(),
-    name: "get characters",
-  });
-}
 
 export interface CharacterDetailsProps {
   id: number
 }
 
 export const CharacterDetails = ({id}: CharacterDetailsProps) => {
-  const [character, setCharacter] = useState<Character | null>(null);
-  useEffect(() => {
-    loadCk3Character(BigInt(id)).then((c) => {
-      setCharacter(c)
-    })
-  }, [id])
+  const { data } = useCk3Worker(
+      useCallback(
+          (worker) =>
+              worker.ck3GetCharacter(BigInt(id)),
+          [id]
+      )
+  )
 
-  // TODO: what to do when character does not exist? display error? how?
-  return character && (
+  // TODO: how to handle null value here?
+  return data == null ? null : (
       <>
-      <p>Character name: {character.firstName}</p>
-      <p>Character house: {character.houseName}</p>
+      <p>Character name: {data.firstName}</p>
+      <p>Character house: {data.houseName}</p>
       </>
   )
 }
 
-export const CharacterList = () => {
-  const [characters, setCharacters] = useState<Character[]>([]);
-  console.log("character list");
-  useEffect(() => {
-    loadCk3Characters().then((l) => {
-      setCharacters(l)
-    })
-  })
-  console.log(characters);
-  const listCharacters = characters.slice(0, 10).map(c => (<li>{c.firstName}</li>));
-  return (
-      <>
-      <ul>
-        <li>{listCharacters}</li>
-      </ul>
-      </>
-  )
-}
+// export const CharacterList = () => {
+//   const [characters, setCharacters] = useState<Character[]>([]);
+//   console.log("character list");
+//   useEffect(() => {
+//     loadCk3Characters().then((l) => {
+//       setCharacters(l)
+//     }, [])
+//   }, [])
+//   console.log(characters);
+//   const listCharacters = characters.slice(0, 10).map(c => (<li>{c.firstName}</li>));
+//   return (
+//       <>
+//       <ul>
+//         <li>{listCharacters}</li>
+//       </ul>
+//       </>
+//   )
+// }
 
 type Ck3PageProps = Ck3SaveFile & { saveData: Ck3SaveData };
 const Ck3Page = ({save, saveData}: Ck3PageProps) => {
@@ -179,7 +167,7 @@ const Ck3Page = ({save, saveData}: Ck3PageProps) => {
             Played character: {saveData.gamestate.playedCharacter.character}
           </p>
           <CharacterDetails id={saveData.gamestate.playedCharacter.character}/>
-          <CharacterList/>
+          {/*<CharacterList/>*/}
           {saveData.meta.isMeltable && (
               <MeltButton
                   worker={getCk3Worker()}
