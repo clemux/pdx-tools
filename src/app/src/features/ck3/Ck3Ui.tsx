@@ -133,24 +133,24 @@ export const CharacterDetails = ({id}: CharacterDetailsProps) => {
   )
 }
 
-// export const CharacterList = () => {
-//   const [characters, setCharacters] = useState<Character[]>([]);
-//   console.log("character list");
-//   useEffect(() => {
-//     loadCk3Characters().then((l) => {
-//       setCharacters(l)
-//     }, [])
-//   }, [])
-//   console.log(characters);
-//   const listCharacters = characters.slice(0, 10).map(c => (<li>{c.firstName}</li>));
-//   return (
-//       <>
-//       <ul>
-//         <li>{listCharacters}</li>
-//       </ul>
-//       </>
-//   )
-// }
+export const CharacterList = () => {
+  const {data = []} = useCk3Worker(
+      useCallback(
+          (worker) => worker.ck3GetCharacters(),
+          []
+      )
+  )
+  const characters = data == null ? null : data.slice(0, 10).map(c =>
+      <li key={c.houseId}>{c.firstName} of {c.houseName}</li>
+  );
+  return (
+      <>
+       <ul>
+         {characters}
+       </ul>
+       </>
+   )
+}
 
 type Ck3PageProps = Ck3SaveFile & { saveData: Ck3SaveData };
 const Ck3Page = ({save, saveData}: Ck3PageProps) => {
@@ -167,7 +167,7 @@ const Ck3Page = ({save, saveData}: Ck3PageProps) => {
             Played character: {saveData.gamestate.playedCharacter.character}
           </p>
           <CharacterDetails id={saveData.gamestate.playedCharacter.character}/>
-          {/*<CharacterList/>*/}
+          <CharacterList/>
           {saveData.meta.isMeltable && (
               <MeltButton
                   worker={getCk3Worker()}
