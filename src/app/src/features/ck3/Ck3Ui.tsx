@@ -141,7 +141,7 @@ export const CharacterList = () => {
       )
   )
   const characters = data == null ? null : data.slice(0, 10).map(c =>
-      <li key={c.houseId}>{c.firstName} of {c.houseName}</li>
+      <li key={c.id}>{c.firstName} of {c.houseName}</li>
   );
   return (
       <>

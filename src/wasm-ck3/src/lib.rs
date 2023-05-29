@@ -1,4 +1,3 @@
-use ck3save::models::{AliveData, Dynasty, DynastyHouse, LivingCharacter};
 use ck3save::{
     models::Gamestate, models::HeaderOwned, models::PlayedCharacter, Ck3Error, Ck3File, Encoding,
     EnvTokens, FailedResolveStrategy,
@@ -27,6 +26,7 @@ pub struct Ck3Gamestate<'a> {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Ck3Character {
+    id: u64,
     first_name: String,
     house_id: Option<u64>,
     house_name: Option<String>,
@@ -94,11 +94,10 @@ impl SaveFileImpl {
     pub fn get_character(&self, id: u64) -> Ck3Character {
         match self.gamestate.living.get(&id) {
             Some(c) => Ck3Character {
+                id: id,
                 first_name: c.first_name.clone().unwrap(),
                 house_id: c.dynasty_house,
-                house_name: self
-                    .get_house(c.dynasty_house.unwrap())
-                    .map(|h| h.name.unwrap()),
+                house_name: (|| self.get_house(c.dynasty_house?)?.name)(),
             },
             None => panic!(), // TODO: don't panic
         }
@@ -111,26 +110,22 @@ impl SaveFileImpl {
             .get(&id)
             .map(|h| Ck3House {
                 name: h.name.clone(),
-                id: id,
+                id,
             })
     }
 
     pub fn get_characters(&self) -> Vec<Ck3Character> {
-        // let characters = self
-        //     .gamestate
-        //     .living
-        //     .iter()
-        //     .map(|(&_x, y)| Ck3Character {
-        //         first_name: y.first_name.clone().unwrap(),
-        //         house_id: y.dynasty_house,
-        //         house_name: self.get_house(y.dynasty_house.unwrap()).unwrap().name,
-        //     })
-        //     .collect();
-        let characters = vec![Ck3Character {
-            first_name: String::from("John"),
-            house_id: Some(42),
-            house_name: Some(String::from("Does")),
-        }];
+        let characters = self
+            .gamestate
+            .living
+            .iter()
+            .map(|(&id, c)| Ck3Character {
+                id,
+                first_name: c.first_name.clone().unwrap(),
+                house_id: c.dynasty_house,
+                house_name: (|| self.get_house(c.dynasty_house?)?.name)(),
+            })
+            .collect();
         return characters;
     }
 
@@ -147,7 +142,7 @@ fn _parse_save(data: &[u8]) -> Result<SaveFile, Ck3Error> {
     let file = Ck3File::from_slice(data)?;
     let mut zip_sink = Vec::new();
     let meta = file.parse(&mut zip_sink)?;
-    let header = meta.deserializer(tokens::get_tokens()).deserialize()?;
+    let header = meta.deserializer(get_tokens()).deserialize()?;
     let gamestate: Gamestate = meta.deserializer(&EnvTokens).deserialize()?;
     Ok(SaveFile(SaveFileImpl {
         header,
@@ -170,7 +165,7 @@ fn _melt(data: &[u8]) -> Result<ck3save::MeltedDocument, Ck3Error> {
     let out = binary
         .melter()
         .on_failed_resolve(FailedResolveStrategy::Ignore)
-        .melt(tokens::get_tokens())?;
+        .melt(get_tokens())?;
     Ok(out)
 }
 

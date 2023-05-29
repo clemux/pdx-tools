@@ -31,6 +31,7 @@ export interface Ck3AliveData {
 }
 
 export interface Character {
+  id: number,
   firstName: string;
   houseId: number;
   houseName: string,
