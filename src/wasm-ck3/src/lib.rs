@@ -70,6 +70,10 @@ impl SaveFile {
     pub fn get_house(&self, id: u64) -> JsValue {
         to_json_value(&self.0.get_house(id))
     }
+
+    pub fn get_characters(&self) -> JsValue {
+        to_json_value(&self.0.get_characters())
+    }
 }
 
 impl SaveFileImpl {
@@ -109,6 +113,25 @@ impl SaveFileImpl {
                 name: h.name.clone(),
                 id: id,
             })
+    }
+
+    pub fn get_characters(&self) -> Vec<Ck3Character> {
+        // let characters = self
+        //     .gamestate
+        //     .living
+        //     .iter()
+        //     .map(|(&_x, y)| Ck3Character {
+        //         first_name: y.first_name.clone().unwrap(),
+        //         house_id: y.dynasty_house,
+        //         house_name: self.get_house(y.dynasty_house.unwrap()).unwrap().name,
+        //     })
+        //     .collect();
+        let characters = vec![Ck3Character {
+            first_name: String::from("John"),
+            house_id: Some(42),
+            house_name: Some(String::from("Does")),
+        }];
+        return characters;
     }
 
     // pub fn get_house(&self, id: u64) -> DynastyHouse {

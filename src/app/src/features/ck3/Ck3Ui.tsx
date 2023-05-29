@@ -116,6 +116,14 @@ async function loadCk3Character(id: bigint) {
   });
 }
 
+async function loadCk3Characters() {
+  const worker = getCk3Worker();
+  return await runTask({
+    fn: () => worker.ck3GetCharacters(),
+    name: "get characters",
+  });
+}
+
 export interface CharacterDetailsProps {
   id: number
 }
@@ -137,6 +145,25 @@ export const CharacterDetails = ({id}: CharacterDetailsProps) => {
   )
 }
 
+export const CharacterList = () => {
+  const [characters, setCharacters] = useState<Character[]>([]);
+  console.log("character list");
+  useEffect(() => {
+    loadCk3Characters().then((l) => {
+      setCharacters(l)
+    })
+  })
+  console.log(characters);
+  const listCharacters = characters.slice(0, 10).map(c => (<li>{c.firstName}</li>));
+  return (
+      <>
+      <ul>
+        <li>{listCharacters}</li>
+      </ul>
+      </>
+  )
+}
+
 type Ck3PageProps = Ck3SaveFile & { saveData: Ck3SaveData };
 const Ck3Page = ({save, saveData}: Ck3PageProps) => {
   return (
@@ -148,13 +175,11 @@ const Ck3Page = ({save, saveData}: Ck3PageProps) => {
         </Head>
         <div className="mx-auto max-w-prose">
           <h2>CK3</h2>
-          {/*<p>*/}
-          {/*  {`A CK3 save was detected (version ${saveData.meta.version}). At this time, CK3 functionality is limited but one can still melt binary ironman saves into plaintext`}*/}
-          {/*</p>*/}
           <p>
             Played character: {saveData.gamestate.playedCharacter.character}
           </p>
           <CharacterDetails id={saveData.gamestate.playedCharacter.character}/>
+          <CharacterList/>
           {saveData.meta.isMeltable && (
               <MeltButton
                   worker={getCk3Worker()}

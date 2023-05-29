@@ -7,3 +7,8 @@ export function ck3GetCharacter(id: bigint): Character | null {
   const save = wasm.save;
   return save.get_character(id) as Character;
 }
+
+export function ck3GetCharacters(): Character[] {
+  const save = wasm.save;
+  return save.get_characters() as Character[];
+}
