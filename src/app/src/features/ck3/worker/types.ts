@@ -35,4 +35,5 @@ export interface Character {
   firstName: string;
   houseId: number;
   houseName: string,
+  traits: string[],
 }

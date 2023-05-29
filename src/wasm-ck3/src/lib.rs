@@ -30,6 +30,7 @@ pub struct Ck3Character {
     first_name: String,
     house_id: Option<u64>,
     house_name: Option<String>,
+    traits: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -98,6 +99,13 @@ impl SaveFileImpl {
                 first_name: c.first_name.clone(),
                 house_id: c.dynasty_house,
                 house_name: (|| self.get_house(c.dynasty_house?)?.name)(),
+                traits: match c.traits.clone() {
+                    Some(v) => v
+                        .iter()
+                        .map(|t| self.gamestate.traits_lookup[*t].clone())
+                        .collect::<Vec<String>>(),
+                    None => vec![],
+                },
             },
             None => panic!(), // TODO: don't panic
         }
@@ -124,6 +132,13 @@ impl SaveFileImpl {
                 first_name: c.first_name.clone(),
                 house_id: c.dynasty_house,
                 house_name: (|| self.get_house(c.dynasty_house?)?.name)(),
+                traits: match c.traits.clone() {
+                    Some(v) => v
+                        .iter()
+                        .map(|t| self.gamestate.traits_lookup[*t].clone())
+                        .collect::<Vec<String>>(),
+                    None => vec![],
+                },
             })
             .collect();
         return characters;

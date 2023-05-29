@@ -5,7 +5,7 @@ import Head from "next/head";
 import {getCk3Worker} from "./worker";
 import {MeltButton} from "@/components/MeltButton";
 import {Ck3SaveData} from "./worker/types";
-import {Alert, Table} from "antd";
+import {Alert, Table, TableProps} from "antd";
 import {captureException} from "@sentry/nextjs";
 import {emitEvent} from "@/lib/plausible";
 import {useCk3Worker} from "@/features/ck3/worker/useCk3Worker";
@@ -127,12 +127,17 @@ export const CharacterDetails = ({id}: CharacterDetailsProps) => {
   // TODO: how to handle null value here?
   return data == null ? null : (
       <>
-      <p>Character name: {data.firstName}</p>
-      <p>Character house: {data.houseName}</p>
+      <p> {data.firstName} of {data.houseName}</p>
       </>
   )
 }
-
+interface DataType {
+  key: React.Key;
+  id: number;
+  firstName: string;
+  house: string;
+  traits: string[]
+}
 export const CharacterList = () => {
   const {data = []} = useCk3Worker(
       useCallback(
@@ -159,28 +164,50 @@ export const CharacterList = () => {
       dataIndex: 'houseName',
       key: 'houseName',
       render: (text) => text == null ? "lowborn" : text
-    }
+    },
+    {
+      title: "Traits",
+      dataIndex: 'traits',
+      key: 'traits',
+      elipsis: true,
+      filterMode: 'tree',
+      filterSearch: true,
+      width: '80%',
+      filters: [
+        {
+          "text": "intellect_good_3",
+          "value": "intellect_good_3"
+        }
+      ],
+      render: (list) => list.join(" "),
+      onFilter: (value: string, record) => record.traits.includes(value),
+    },
+      Table.EXPAND_COLUMN,
   ];
+  const onChange: TableProps<DataType>['onChange'] = (pagination, filters, sorter, extra) => {
+    console.log('params', pagination, filters, sorter, extra);
+  };
   return (
-    <Table dataSource={data} columns={columns}></Table>
+    <Table dataSource={data} columns={columns} expandable={{
+      expandedRowRender: (record) => record.traits.join(" "),
+    }} onChange={onChange}></Table>
    )
 }
 
 type Ck3PageProps = Ck3SaveFile & { saveData: Ck3SaveData };
 const Ck3Page = ({save, saveData}: Ck3PageProps) => {
   return (
-      <main className="mx-auto mt-4 max-w-screen-lg">
+      <main className="max-w-max">
         <Head>
           <title>{`${save.file.name.replace(".ck3", "")} - CK3 (${
               saveData.meta.version
           }) - PDX Tools`}</title>
         </Head>
-        <div className="mx-auto max-w-prose">
+        <div className="">
           <h2>CK3</h2>
-          <p>
-            Player character ID: {saveData.gamestate.playerCharacterId.toString()}
-          </p>
+          <h3>Player character</h3>
           <CharacterDetails id={saveData.gamestate.playerCharacterId}/>
+          <h3>Character Finder</h3>
           <CharacterList/>
           {saveData.meta.isMeltable && (
               <MeltButton
