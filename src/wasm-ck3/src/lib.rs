@@ -4,7 +4,6 @@ use ck3save::{
     EnvTokens, FailedResolveStrategy,
 };
 use serde::Serialize;
-use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 
 mod tokens;
@@ -31,7 +30,15 @@ pub struct Ck3Gamestate<'a> {
 #[serde(rename_all = "camelCase")]
 pub struct Ck3Character {
     first_name: String,
-    house: u64,
+    house_id: Option<u64>,
+    house_name: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Ck3House {
+    id: u64,
+    name: String,
 }
 
 pub struct SaveFileImpl {
@@ -61,6 +68,10 @@ impl SaveFile {
     pub fn get_character(&self, id: u64) -> JsValue {
         to_json_value(&self.0.get_character(id))
     }
+
+    pub fn get_house(&self, id: u64) -> JsValue {
+        to_json_value(&self.0.get_house(id))
+    }
 }
 
 impl SaveFileImpl {
@@ -75,7 +86,6 @@ impl SaveFileImpl {
         Ck3Gamestate {
             version: self.gamestate.meta_data.version.clone(),
             played_character: &self.gamestate.played_character,
-            // houses: self.gamestate.dynasties.dynasty_house,
         }
     }
 
@@ -83,11 +93,29 @@ impl SaveFileImpl {
         match self.gamestate.living.get(&id) {
             Some(c) => Ck3Character {
                 first_name: c.first_name.clone().unwrap(),
-                house: c.dynasty_house.unwrap(),
+                house_id: c.dynasty_house,
+                house_name: match self.get_house(c.dynasty_house.unwrap()) {
+                    Some(h) => Some(h.name),
+                    None => None,
+                },
             },
-            None => panic!(),
+            None => panic!(), // TODO: don't panic
         }
     }
+
+    pub fn get_house(&self, id: u64) -> Option<Ck3House> {
+        match self.gamestate.dynasties.dynasty_house.get(&id) {
+            Some(h) => Some(Ck3House {
+                name: h.name.clone().unwrap(),
+                id: id,
+            }),
+            None => None,
+        }
+    }
+
+    // pub fn get_house(&self, id: u64) -> DynastyHouse {
+    //
+    // }
 
     fn is_meltable(&self) -> bool {
         matches!(self.encoding, Encoding::Binary | Encoding::BinaryZip)

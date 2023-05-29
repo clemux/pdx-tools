@@ -126,13 +126,13 @@ export const CharacterDetails = ({id}: CharacterDetailsProps) => {
     loadCk3Character(BigInt(id)).then((c) => {
       setCharacter(c)
     })
-  }, [id, character])
+  }, [id])
 
   // TODO: what to do when character does not exist? display error? how?
   return character && (
       <>
       <p>Character name: {character.firstName}</p>
-      <p>Character house: {character.house}</p>
+      <p>Character house: {character.houseName}</p>
       </>
   )
 }
