@@ -5,7 +5,7 @@ import Head from "next/head";
 import {getCk3Worker} from "./worker";
 import {MeltButton} from "@/components/MeltButton";
 import {Ck3SaveData} from "./worker/types";
-import {Alert} from "antd";
+import {Alert, Table} from "antd";
 import {captureException} from "@sentry/nextjs";
 import {emitEvent} from "@/lib/plausible";
 import {useCk3Worker} from "@/features/ck3/worker/useCk3Worker";
@@ -112,7 +112,7 @@ function useLoadCk3(input: Ck3SaveFile) {
 
 
 export interface CharacterDetailsProps {
-  id: number
+  id: bigint
 }
 
 export const CharacterDetails = ({id}: CharacterDetailsProps) => {
@@ -143,12 +143,26 @@ export const CharacterList = () => {
   const characters = data == null ? null : data.slice(0, 10).map(c =>
       <li key={c.id}>{c.firstName} of {c.houseName}</li>
   );
+  const columns = [
+    {
+      title: "ID",
+      dataIndex: 'id',
+      key: 'id'
+    },
+    {
+      title: "Name",
+      dataIndex: 'firstName',
+      key: 'firstName'
+    },
+    {
+      title: "House",
+      dataIndex: 'houseName',
+      key: 'houseName',
+      render: (text) => text == null ? "lowborn" : text
+    }
+  ];
   return (
-      <>
-       <ul>
-         {characters}
-       </ul>
-       </>
+    <Table dataSource={data} columns={columns}></Table>
    )
 }
 
@@ -164,9 +178,9 @@ const Ck3Page = ({save, saveData}: Ck3PageProps) => {
         <div className="mx-auto max-w-prose">
           <h2>CK3</h2>
           <p>
-            Played character: {saveData.gamestate.playedCharacter.character}
+            Player character ID: {saveData.gamestate.playerCharacterId.toString()}
           </p>
-          <CharacterDetails id={saveData.gamestate.playedCharacter.character}/>
+          <CharacterDetails id={saveData.gamestate.playerCharacterId}/>
           <CharacterList/>
           {saveData.meta.isMeltable && (
               <MeltButton

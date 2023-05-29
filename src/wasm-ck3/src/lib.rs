@@ -18,9 +18,9 @@ pub struct Ck3Metadata {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Ck3Gamestate<'a> {
+pub struct Ck3Gamestate {
     version: String,
-    played_character: &'a PlayedCharacter,
+    player_character_id: u64,
 }
 
 #[derive(Debug, Serialize)]
@@ -87,7 +87,7 @@ impl SaveFileImpl {
     pub fn gamestate(&self) -> Ck3Gamestate {
         Ck3Gamestate {
             version: self.gamestate.meta_data.version.clone(),
-            played_character: &self.gamestate.played_character,
+            player_character_id: self.gamestate.played_character.character,
         }
     }
 
@@ -95,7 +95,7 @@ impl SaveFileImpl {
         match self.gamestate.living.get(&id) {
             Some(c) => Ck3Character {
                 id: id,
-                first_name: c.first_name.clone().unwrap(),
+                first_name: c.first_name.clone(),
                 house_id: c.dynasty_house,
                 house_name: (|| self.get_house(c.dynasty_house?)?.name)(),
             },
@@ -121,17 +121,13 @@ impl SaveFileImpl {
             .iter()
             .map(|(&id, c)| Ck3Character {
                 id,
-                first_name: c.first_name.clone().unwrap(),
+                first_name: c.first_name.clone(),
                 house_id: c.dynasty_house,
                 house_name: (|| self.get_house(c.dynasty_house?)?.name)(),
             })
             .collect();
         return characters;
     }
-
-    // pub fn get_house(&self, id: u64) -> DynastyHouse {
-    //
-    // }
 
     fn is_meltable(&self) -> bool {
         matches!(self.encoding, Encoding::Binary | Encoding::BinaryZip)

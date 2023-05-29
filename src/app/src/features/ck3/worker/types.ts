@@ -5,7 +5,7 @@ export interface Ck3Metadata {
 
 export interface  Ck3Gamestate {
   version: string,
-  playedCharacter: Ck3PlayedCharacter,
+  playerCharacterId: bigint,
   houses: Array<Ck3DynastyHouse>
 }
 
