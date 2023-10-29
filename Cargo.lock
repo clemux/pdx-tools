@@ -671,7 +671,6 @@ dependencies = [
 [[package]]
 name = "ck3save"
 version = "0.4.3"
-source = "git+https://github.com/rakaly/ck3save.git#ce62180f5a067fe0dd0c071373ccd60a8d914e66"
 dependencies = [
  "jomini",
  "libdeflater",

@@ -9,5 +9,10 @@ export async function fetchData(file: File) {
 export async function parseCk3() {
   wasm.save = wasm.module.parse_save(wasm.takeStash());
   const meta = wasm.save.metadata();
-  return { meta };
+  const gamestate = wasm.save.gamestate();
+  const data = {
+    meta: meta,
+    gamestate: gamestate,
+  }
+  return { data };
 }

@@ -1,13 +1,14 @@
-import { useEffect, useReducer } from "react";
-import { logMs } from "@/lib/log";
-import { timeit } from "@/lib/timeit";
+import {useCallback, useEffect, useReducer} from "react";
+import {logMs} from "@/lib/log";
+import {timeit} from "@/lib/timeit";
 import Head from "next/head";
-import { getCk3Worker } from "./worker";
-import { MeltButton } from "@/components/MeltButton";
-import { Ck3Metadata } from "./worker/types";
-import { Alert } from "antd";
-import { captureException } from "@sentry/nextjs";
-import { emitEvent } from "@/lib/plausible";
+import {getCk3Worker} from "./worker";
+import {MeltButton} from "@/components/MeltButton";
+import {Ck3SaveData} from "./worker/types";
+import {Alert, Table, TableProps} from "antd";
+import {captureException} from "@sentry/nextjs";
+import {emitEvent} from "@/lib/plausible";
+import {useCk3Worker} from "@/features/ck3/worker/useCk3Worker";
 
 export type Ck3SaveFile = { save: { file: File } };
 
@@ -39,23 +40,23 @@ async function loadCk3Save(file: File) {
     }),
   ]);
 
-  const { meta } = await runTask({
+  const { data } = await runTask({
     fn: () => worker.parseCk3(),
     name: "parse ck3 file",
   });
 
-  return { meta };
+  return { data };
 }
 
 type Ck3LoadState = {
   loading: boolean;
-  data: Ck3Metadata | null;
+  data: Ck3SaveData | null;
   error: unknown | null;
 };
 
 type Ck3LoadActions =
   | { kind: "start" }
-  | { kind: "data"; data: Ck3Metadata }
+  | { kind: "data"; data: Ck3SaveData }
   | { kind: "error"; error: unknown };
 
 const loadStateReducer = (
@@ -96,8 +97,8 @@ function useLoadCk3(input: Ck3SaveFile) {
   useEffect(() => {
     dispatch({ kind: "start" });
     loadCk3Save(input.save.file)
-      .then(({ meta }) => {
-        dispatch({ kind: "data", data: meta });
+      .then(({ data }) => {
+        dispatch({ kind: "data", data: data });
       })
       .catch((error) => {
         dispatch({ kind: "error", error });
@@ -108,39 +109,124 @@ function useLoadCk3(input: Ck3SaveFile) {
   return { loading, data, error };
 }
 
-type Ck3PageProps = Ck3SaveFile & { meta: Ck3Metadata };
-const Ck3Page = ({ save, meta }: Ck3PageProps) => {
+
+
+export interface CharacterDetailsProps {
+  id: bigint
+}
+
+export const CharacterDetails = ({id}: CharacterDetailsProps) => {
+  const { data } = useCk3Worker(
+      useCallback(
+          (worker) =>
+              worker.ck3GetCharacter(BigInt(id)),
+          [id]
+      )
+  )
+
+  // TODO: how to handle null value here?
+  return data == null ? null : (
+      <>
+      <p> {data.firstName} of {data.houseName}</p>
+      </>
+  )
+}
+interface DataType {
+  key: React.Key;
+  id: number;
+  firstName: string;
+  house: string;
+  traits: string[]
+}
+export const CharacterList = () => {
+  const {data = []} = useCk3Worker(
+      useCallback(
+          (worker) => worker.ck3GetCharacters(),
+          []
+      )
+  )
+  const characters = data == null ? null : data.slice(0, 10).map(c =>
+      <li key={c.id}>{c.firstName} of {c.houseName}</li>
+  );
+  const columns = [
+    {
+      title: "ID",
+      dataIndex: 'id',
+      key: 'id'
+    },
+    {
+      title: "Name",
+      dataIndex: 'firstName',
+      key: 'firstName'
+    },
+    {
+      title: "House",
+      dataIndex: 'houseName',
+      key: 'houseName',
+      render: (text) => text == null ? "lowborn" : text
+    },
+    {
+      title: "Traits",
+      dataIndex: 'traits',
+      key: 'traits',
+      elipsis: true,
+      filterMode: 'tree',
+      filterSearch: true,
+      width: '80%',
+      filters: [
+        {
+          "text": "intellect_good_3",
+          "value": "intellect_good_3"
+        }
+      ],
+      render: (list) => list.join(" "),
+      onFilter: (value: string, record) => record.traits.includes(value),
+    },
+      Table.EXPAND_COLUMN,
+  ];
+  const onChange: TableProps<DataType>['onChange'] = (pagination, filters, sorter, extra) => {
+    console.log('params', pagination, filters, sorter, extra);
+  };
   return (
-    <main className="mx-auto mt-4 max-w-screen-lg">
-      <Head>
-        <title>{`${save.file.name.replace(".ck3", "")} - CK3 (${
-          meta.version
-        }) - PDX Tools`}</title>
-      </Head>
-      <div className="mx-auto max-w-prose">
-        <h2>CK3</h2>
-        <p>
-          {`A CK3 save was detected (version ${meta.version}). At this time, CK3 functionality is limited but one can still melt binary ironman saves into plaintext`}
-        </p>
-        {meta.isMeltable && (
-          <MeltButton
-            worker={getCk3Worker()}
-            game="ck3"
-            filename={save.file.name}
-          />
-        )}
-      </div>
-    </main>
+    <Table dataSource={data} columns={columns} expandable={{
+      expandedRowRender: (record) => record.traits.join(" "),
+    }} onChange={onChange}></Table>
+   )
+}
+
+type Ck3PageProps = Ck3SaveFile & { saveData: Ck3SaveData };
+const Ck3Page = ({save, saveData}: Ck3PageProps) => {
+  return (
+      <main className="max-w-max">
+        <Head>
+          <title>{`${save.file.name.replace(".ck3", "")} - CK3 (${
+              saveData.meta.version
+          }) - PDX Tools`}</title>
+        </Head>
+        <div className="">
+          <h2>CK3</h2>
+          <h3>Player character</h3>
+          <CharacterDetails id={saveData.gamestate.playerCharacterId}/>
+          <h3>Character Finder</h3>
+          <CharacterList/>
+          {saveData.meta.isMeltable && (
+              <MeltButton
+                  worker={getCk3Worker()}
+                  game="ck3"
+                  filename={save.file.name}
+              />
+          )}
+        </div>
+      </main>
   );
 };
 
 export const Ck3Ui = (props: Ck3SaveFile) => {
   const { data, error } = useLoadCk3(props);
-
   return (
     <>
       {error && <Alert type="error" closable message={`${error}`} />}
-      {data && <Ck3Page {...props} meta={data} />}
+      {data && <Ck3Page {...props} saveData={data} />}
     </>
   );
 };
